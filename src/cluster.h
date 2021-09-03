@@ -264,13 +264,13 @@ typedef struct {
     uint64_t offset;    /* Master replication offset if node is a master or
                            processed replication offset if node is a slave. */
     char sender[CLUSTER_NAMELEN]; /* Name of the sender node */
-    unsigned char myslots[CLUSTER_SLOTS/8];
-    char slaveof[CLUSTER_NAMELEN];
+    unsigned char myslots[CLUSTER_SLOTS/8];  // 本节点维护的 slots bits
+    char slaveof[CLUSTER_NAMELEN]; // 如果本节点为 slave 节点，则 slaveof 记录对应的 master 节点ID
     char myip[NET_IP_STR_LEN];    /* Sender IP, if not all zeroed. */
     char notused1[34];  /* 34 bytes reserved for future usage. */
     uint16_t cport;      /* Sender TCP cluster bus port */
     uint16_t flags;      /* Sender node flags */
-    unsigned char state; /* Cluster state from the POV of the sender */
+    unsigned char state; /* Cluster state from the POV of the sender // cluster 状态 */
     unsigned char mflags[3]; /* Message flags: CLUSTERMSG_FLAG[012]_... */
     union clusterMsgData data;
 } clusterMsg;

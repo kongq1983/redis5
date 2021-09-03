@@ -2182,18 +2182,18 @@ void clusterReadHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     char buf[sizeof(clusterMsg)];
     ssize_t nread;
     clusterMsg *hdr;
-    clusterLink *link = (clusterLink*) privdata;
+    clusterLink *link = (clusterLink*) privdata; // 网络通信
     unsigned int readlen, rcvbuflen;
     UNUSED(el);
     UNUSED(mask);
-
+    //  - char sig[4];      // 消息签名，对于 cluster 消息，固定为字符序列 RCmb    //- uint32_t totlen;  // 消息总长度
     while(1) { /* Read as long as there is data to read. */
-        rcvbuflen = sdslen(link->rcvbuf);
-        if (rcvbuflen < 8) {
+        rcvbuflen = sdslen(link->rcvbuf); // 读取数据长度
+        if (rcvbuflen < 8) { // clusterMsg 前8个字节  sig[4]：前4个消息签名   totlen:后4个消息总长度
             /* First, obtain the first 8 bytes to get the full message
              * length. */
             readlen = 8 - rcvbuflen;
-        } else {
+        } else { // 已经知道了本条消息的长度 // 本块代码主要计算剩余还需读入的字节数(readlen)才是完整的消息
             /* Finally read the full message. */
             hdr = (clusterMsg*) link->rcvbuf;
             if (rcvbuflen == 8) {
@@ -2212,10 +2212,10 @@ void clusterReadHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
             readlen = ntohl(hdr->totlen) - rcvbuflen;
             if (readlen > sizeof(buf)) readlen = sizeof(buf);
         }
-
-        nread = read(fd,buf,readlen);
+        // 读入本条消息记录的剩余 readlen 个字节的数据
+        nread = read(fd,buf,readlen); // ssize_t read(int fd, void * buf, size_t count)
         if (nread == -1 && errno == EAGAIN) return; /* No more data ready. */
-
+        // 因为这里的 fd 是非阻塞的，所以需要判断 EAGAIN
         if (nread <= 0) {
             /* I/O error... */
             serverLog(LL_DEBUG,"I/O error reading from node link: %s",
@@ -2228,10 +2228,10 @@ void clusterReadHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
             hdr = (clusterMsg*) link->rcvbuf;
             rcvbuflen += nread;
         }
-
+        // // 表明 link 上的 rcvbuf 已经是一个完整的 cluster 消息
         /* Total length obtained? Process this packet. */
         if (rcvbuflen >= 8 && rcvbuflen == ntohl(hdr->totlen)) {
-            if (clusterProcessPacket(link)) {
+            if (clusterProcessPacket(link)) { // 下面开始处理此消息
                 sdsfree(link->rcvbuf);
                 link->rcvbuf = sdsempty();
             } else {
