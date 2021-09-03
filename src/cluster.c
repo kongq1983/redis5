@@ -118,7 +118,7 @@ int clusterLoadConfig(char *filename) {
      * together with the node ID of the sender/receiver.
      *
      * To simplify we allocate 1024+CLUSTER_SLOTS*128 bytes per line. */
-    maxline = 1024+CLUSTER_SLOTS*128;
+    maxline = 1024+CLUSTER_SLOTS*128; // 1024+16384*128
     line = zmalloc(maxline);
     while(fgets(line,maxline,fp) != NULL) {
         int argc;
@@ -2175,7 +2175,7 @@ void clusterWriteHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
         aeDeleteFileEvent(server.el, link->fd, AE_WRITABLE);
 }
 
-/* Read data. Try to read the first field of the header first to check the
+/* Read data. Try to read the first field of the header first to check the  todo 读数据 clusterReadHandler
  * full length of the packet. When a whole packet is in memory this function
  * will call the function to process the packet. And so forth. */
 void clusterReadHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
