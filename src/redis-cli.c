@@ -2015,7 +2015,7 @@ typedef struct clusterManagerCommandDef {
     char *args;
     char *options;
 } clusterManagerCommandDef;
-
+// todo 客户端命令
 clusterManagerCommandDef clusterManagerCommands[] = {
     {"create", clusterManagerCommandCreate, -2, "host1:port1 ... hostN:portN",
      "replicas <arg>"},

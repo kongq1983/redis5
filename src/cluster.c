@@ -450,16 +450,16 @@ void clusterUpdateMyselfFlags(void) {
 
 void clusterInit(void) {
     int saveconf = 0;
-
-    server.cluster = zmalloc(sizeof(clusterState));
+    // 初始化配置，server.cluster就是clusterState结构体，每一个节点保存一个
+    server.cluster = zmalloc(sizeof(clusterState)); //分配内存
     server.cluster->myself = NULL;
-    server.cluster->currentEpoch = 0;
+    server.cluster->currentEpoch = 0;// 选举周期
     server.cluster->state = CLUSTER_FAIL;
     server.cluster->size = 1;
     server.cluster->todo_before_sleep = 0;
-    server.cluster->nodes = dictCreate(&clusterNodesDictType,NULL);
+    server.cluster->nodes = dictCreate(&clusterNodesDictType,NULL); // 集群节点名单（包括 myself节点）
     server.cluster->nodes_black_list =
-        dictCreate(&clusterNodesBlackListDictType,NULL);
+        dictCreate(&clusterNodesBlackListDictType,NULL); //创建黑名单列表
     server.cluster->failover_auth_time = 0;
     server.cluster->failover_auth_count = 0;
     server.cluster->failover_auth_rank = 0;
@@ -908,10 +908,10 @@ void freeClusterNode(clusterNode *n) {
 
 /* Add a node to the nodes hash table */
 int clusterAddNode(clusterNode *node) {
-    int retval;
-
+    int retval; // hashtable  key  value
+    // dictAdd(dict *ht, void *key, void *val)  key: sdsnewlen(node->name,CLUSTER_NAMELEN)  val: node
     retval = dictAdd(server.cluster->nodes,
-            sdsnewlen(node->name,CLUSTER_NAMELEN), node);
+            sdsnewlen(node->name,CLUSTER_NAMELEN), node); //
     return (retval == DICT_OK) ? C_OK : C_ERR;
 }
 
@@ -1307,7 +1307,7 @@ int clusterStartHandshake(char *ip, int port, int cport) {
     char norm_ip[NET_IP_STR_LEN];
     struct sockaddr_storage sa;
 
-    /* IP sanity check */
+    /* IP sanity check IP 健全性检查 */
     if (inet_pton(AF_INET,ip,
             &(((struct sockaddr_in *)&sa)->sin_addr)))
     {
@@ -1329,18 +1329,18 @@ int clusterStartHandshake(char *ip, int port, int cport) {
 
     /* Set norm_ip as the normalized string representation of the node
      * IP address. */
-    memset(norm_ip,0,NET_IP_STR_LEN);
-    if (sa.ss_family == AF_INET)
+    memset(norm_ip,0,NET_IP_STR_LEN); //把norm_ip填充\000
+    if (sa.ss_family == AF_INET)  //ipv4
         inet_ntop(AF_INET,
             (void*)&(((struct sockaddr_in *)&sa)->sin_addr),
-            norm_ip,NET_IP_STR_LEN);
-    else
+            norm_ip,NET_IP_STR_LEN); // inet_ntop函数是将网络字节序二进制值转换成点分十进制串
+    else // ipv6
         inet_ntop(AF_INET6,
             (void*)&(((struct sockaddr_in6 *)&sa)->sin6_addr),
-            norm_ip,NET_IP_STR_LEN);
-
+            norm_ip,NET_IP_STR_LEN); // inet_ntop函数是将网络字节序二进制值转换成点分十进制串
+    // 上面norm_ip能得到ip
     if (clusterHandshakeInProgress(norm_ip,port,cport)) {
-        errno = EAGAIN;
+        errno = EAGAIN; //此地址已在进行握手
         return 0;
     }
 
@@ -1348,10 +1348,10 @@ int clusterStartHandshake(char *ip, int port, int cport) {
      * createClusterNode()). Everything will be fixed during the
      * handshake. */
     n = createClusterNode(NULL,CLUSTER_NODE_HANDSHAKE|CLUSTER_NODE_MEET);
-    memcpy(n->ip,norm_ip,sizeof(n->ip));
-    n->port = port;
-    n->cport = cport;
-    clusterAddNode(n);
+    memcpy(n->ip,norm_ip,sizeof(n->ip)); // 把norm_ip的前sizeof(n->ip) 复制到ip 其实就是设置ip
+    n->port = port; // 设置客户端端口
+    n->cport = cport; // 设置集群端口
+    clusterAddNode(n); // 把node添加到nodes  key:node.name  value: node
     return 1;
 }
 

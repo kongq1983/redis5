@@ -141,16 +141,16 @@ typedef struct clusterNode { // mstime_t 理解 ctime timestamp
     list *fail_reports;         /* List of nodes signaling this as failing */
 } clusterNode;
 
-typedef struct clusterState {
+typedef struct clusterState { // // 初始化配置，server.cluster就是clusterState结构体，每一个节点保存一个
     clusterNode *myself;  /* This node  自己节点 */
     uint64_t currentEpoch;
     int state;            /* CLUSTER_OK, CLUSTER_FAIL, ... */
     int size;             /* Num of master nodes with at least one slot */
-    dict *nodes;          /* Hash table of name -> clusterNode structures */
-    dict *nodes_black_list; /* Nodes we don't re-add for a few seconds. */
-    clusterNode *migrating_slots_to[CLUSTER_SLOTS];
-    clusterNode *importing_slots_from[CLUSTER_SLOTS];
-    clusterNode *slots[CLUSTER_SLOTS];
+    dict *nodes;          /* Hash table of name -> clusterNode structures 集群节点名单（包括 myself节点） */
+    dict *nodes_black_list; /* Nodes we don't re-add for a few seconds. 节点黑名单，用于 CLUSTER FORGET命令 */
+    clusterNode *migrating_slots_to[CLUSTER_SLOTS]; // 记录要从当前节点迁移到目标节点的槽，以及迁移的目标节点
+    clusterNode *importing_slots_from[CLUSTER_SLOTS]; // 记录要从源节点迁移到本节点的槽，以及进行迁移的源节点
+    clusterNode *slots[CLUSTER_SLOTS]; // 负责处理各个槽的节点
     uint64_t slots_keys_count[CLUSTER_SLOTS];
     rax *slots_to_keys;
     /* The following fields are used to take the slave state on elections. */
@@ -168,15 +168,15 @@ typedef struct clusterState {
     clusterNode *mf_slave;      /* Slave performing the manual failover. */
     /* Manual failover state of slave. */
     long long mf_master_offset; /* Master offset the slave needs to start MF
-                                   or zero if stil not received. */
+                                   or zero if stil not received. 从服务器的手动故障转移状态*/
     int mf_can_start;           /* If non-zero signal that the manual failover
-                                   can start requesting masters vote. */
+                                   can start requesting masters vote. // 值为非 0时表示各个主服务器可以开始投票 */
     /* The followign fields are used by masters to take state on elections. */
-    uint64_t lastVoteEpoch;     /* Epoch of the last vote granted. */
-    int todo_before_sleep; /* Things to do in clusterBeforeSleep(). */
+    uint64_t lastVoteEpoch;     /* Epoch of the last vote granted. */ // 集群最后一次进行投票的纪元
+    int todo_before_sleep; /* Things to do in clusterBeforeSleep(). */ // 在进入下个事件循环之前要做的事情，以各个 flag来记录
     /* Messages received and sent by type. */
-    long long stats_bus_messages_sent[CLUSTERMSG_TYPE_COUNT];
-    long long stats_bus_messages_received[CLUSTERMSG_TYPE_COUNT];
+    long long stats_bus_messages_sent[CLUSTERMSG_TYPE_COUNT]; // 通过 cluster连接发送的消息数量
+    long long stats_bus_messages_received[CLUSTERMSG_TYPE_COUNT];  // 通过 cluster接收到的消息数量
     long long stats_pfail_nodes;    /* Number of nodes in PFAIL status,
                                        excluding nodes without address. */
 } clusterState;
