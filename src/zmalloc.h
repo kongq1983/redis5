@@ -77,19 +77,19 @@
 #define HAVE_DEFRAG
 #endif
 
-void *zmalloc(size_t size);
-void *zcalloc(size_t size);
-void *zrealloc(void *ptr, size_t size);
-void zfree(void *ptr);
-char *zstrdup(const char *s);
-size_t zmalloc_used_memory(void);
-void zmalloc_set_oom_handler(void (*oom_handler)(size_t));
+void *zmalloc(size_t size); /* 调用zmalloc申请size个大小的空间 */
+void *zcalloc(size_t size); /* 调用系统函数calloc函数申请空间 */
+void *zrealloc(void *ptr, size_t size); /* 原内存重新调整空间为size的大小 */
+void zfree(void *ptr); /* 释放空间方法，并更新used_memory的值 */
+char *zstrdup(const char *s); /* 字符串复制方法 */
+size_t zmalloc_used_memory(void); /* 获取当前已经占用的内存大小 */
+void zmalloc_set_oom_handler(void (*oom_handler)(size_t)); /* 可自定义设置内存溢出的处理方法 */
 size_t zmalloc_get_rss(void);
 int zmalloc_get_allocator_info(size_t *allocated, size_t *active, size_t *resident);
-size_t zmalloc_get_private_dirty(long pid);
+size_t zmalloc_get_private_dirty(long pid); /* 获取私有的脏数据大小 */
 size_t zmalloc_get_smap_bytes_by_field(char *field, long pid);
 size_t zmalloc_get_memory_size(void);
-void zlibc_free(void *ptr);
+void zlibc_free(void *ptr); /* 原始系统free释放方法 */
 
 #ifdef HAVE_DEFRAG
 void zfree_no_tcache(void *ptr);

@@ -119,7 +119,7 @@ int clusterLoadConfig(char *filename) {
      *
      * To simplify we allocate 1024+CLUSTER_SLOTS*128 bytes per line. */
     maxline = 1024+CLUSTER_SLOTS*128; // 1024+16384*128
-    line = zmalloc(maxline);
+    line = zmalloc(maxline); // /* 调用zmalloc申请size个大小的空间 */
     while(fgets(line,maxline,fp) != NULL) {
         int argc;
         sds *argv;
@@ -718,13 +718,13 @@ clusterNode *createClusterNode(char *nodename, int flags) {
     clusterNode *node = zmalloc(sizeof(*node));
 
     if (nodename)
-        memcpy(node->name, nodename, CLUSTER_NAMELEN);
+        memcpy(node->name, nodename, CLUSTER_NAMELEN); // 指定nodename
     else
-        getRandomHexChars(node->name, CLUSTER_NAMELEN);
+        getRandomHexChars(node->name, CLUSTER_NAMELEN); // 没指定nodename 随机生成
     node->ctime = mstime();
-    node->configEpoch = 0;
+    node->configEpoch = 0; // 新节点的 configEpoch = 0
     node->flags = flags;
-    memset(node->slots,0,sizeof(node->slots));
+    memset(node->slots,0,sizeof(node->slots)); // memset(void *str, int c, size_t n) 复制字符 c（一个无符号字符）到参数 str 所指向的字符串的前 n 个字符
     node->numslots = 0;
     node->numslaves = 0;
     node->slaves = NULL;
@@ -733,7 +733,7 @@ clusterNode *createClusterNode(char *nodename, int flags) {
     node->data_received = 0;
     node->fail_time = 0;
     node->link = NULL;
-    memset(node->ip,0,sizeof(node->ip));
+    memset(node->ip,0,sizeof(node->ip)); // '\000'就是'\0'，即“空字符”可用作表示字符串结束标记
     node->port = 0;
     node->cport = 0;
     node->fail_reports = listCreate();
@@ -839,18 +839,18 @@ int clusterNodeFailureReportsCount(clusterNode *node) {
     clusterNodeCleanupFailureReports(node);
     return listLength(node->fail_reports);
 }
-
+/** 从master删除1个slave节点  */
 int clusterNodeRemoveSlave(clusterNode *master, clusterNode *slave) {
     int j;
 
-    for (j = 0; j < master->numslaves; j++) {
-        if (master->slaves[j] == slave) {
+    for (j = 0; j < master->numslaves; j++) { // 该master的所有slaves
+        if (master->slaves[j] == slave) { //相等
             if ((j+1) < master->numslaves) {
                 int remaining_slaves = (master->numslaves - j) - 1;
                 memmove(master->slaves+j,master->slaves+(j+1),
                         (sizeof(*master->slaves) * remaining_slaves));
             }
-            master->numslaves--;
+            master->numslaves--; // slave节点个数-1
             if (master->numslaves == 0)
                 master->flags &= ~CLUSTER_NODE_MIGRATE_TO;
             return C_OK;
@@ -864,10 +864,10 @@ int clusterNodeAddSlave(clusterNode *master, clusterNode *slave) {
 
     /* If it's already a slave, don't add it again. */
     for (j = 0; j < master->numslaves; j++)
-        if (master->slaves[j] == slave) return C_ERR;
+        if (master->slaves[j] == slave) return C_ERR; // slave已经存在了
     master->slaves = zrealloc(master->slaves,
-        sizeof(clusterNode*)*(master->numslaves+1));
-    master->slaves[master->numslaves] = slave;
+        sizeof(clusterNode*)*(master->numslaves+1)); // 重新分配内存 增加1个slave所需要的空间
+    master->slaves[master->numslaves] = slave; //放到最后位置
     master->numslaves++;
     master->flags |= CLUSTER_NODE_MIGRATE_TO;
     return C_OK;
