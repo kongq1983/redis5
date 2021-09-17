@@ -730,7 +730,7 @@ static void acceptCommonHandler(int fd, int flags, char *ip) {
     server.stat_numconnections++;
     c->flags |= flags;
 }
-
+// 这段代码很清晰的表明了，对于6379 过来的请求，全部 使用acceptTcpHandler 函数生成一个新的fd， 在同时将这个fd 放在 eventloop 中监听，并且 使用 readQueryFromClient 来处理
 void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     int cport, cfd, max = MAX_ACCEPTS_PER_CALL;
     char cip[NET_IP_STR_LEN];
@@ -738,8 +738,8 @@ void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     UNUSED(mask);
     UNUSED(privdata);
 
-    while(max--) {
-        cfd = anetTcpAccept(server.neterr, fd, cip, sizeof(cip), &cport);
+    while(max--) { // 循环1000次
+        cfd = anetTcpAccept(server.neterr, fd, cip, sizeof(cip), &cport); // anet.c:548
         if (cfd == ANET_ERR) {
             if (errno != EWOULDBLOCK)
                 serverLog(LL_WARNING,

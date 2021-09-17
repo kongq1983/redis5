@@ -2032,7 +2032,7 @@ void resetServerStats(void) {
     server.stat_net_output_bytes = 0;
     server.aof_delayed_fsync = 0;
 }
-
+// todo initServer
 void initServer(void) {
     int j;
 
@@ -2156,8 +2156,8 @@ void initServer(void) {
      * domain sockets. */
     for (j = 0; j < server.ipfd_count; j++) {
         if (aeCreateFileEvent(server.el, server.ipfd[j], AE_READABLE,
-            acceptTcpHandler,NULL) == AE_ERR)
-            {
+            acceptTcpHandler,NULL) == AE_ERR) // 注册回调函数  ae.c:136
+            { // acceptTcpHandler: networking.c:734  server.h:1454
                 serverPanic(
                     "Unrecoverable error creating server.ipfd file event.");
             }

@@ -408,7 +408,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
 
         /* Call the multiplexing API, will return only on timeout or when
          * some event fires. */
-        numevents = aeApiPoll(eventLoop, tvp);
+        numevents = aeApiPoll(eventLoop, tvp); // numevents: 返回有真正事件的大小 比如总共10个连接 1个是AE_NONE 则返回9
 
         /* After sleep callback. */
         if (eventLoop->aftersleep != NULL && flags & AE_CALL_AFTER_SLEEP)
@@ -440,20 +440,20 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
              * Fire the readable event if the call sequence is not
              * inverted. */
             if (!invert && fe->mask & mask & AE_READABLE) {
-                fe->rfileProc(eventLoop,fd,fe->clientData,mask);
+                fe->rfileProc(eventLoop,fd,fe->clientData,mask); // 触发读事件
                 fired++;
             }
 
             /* Fire the writable event. */
             if (fe->mask & mask & AE_WRITABLE) {
                 if (!fired || fe->wfileProc != fe->rfileProc) {
-                    fe->wfileProc(eventLoop,fd,fe->clientData,mask);
+                    fe->wfileProc(eventLoop,fd,fe->clientData,mask); // 触发写事件
                     fired++;
                 }
             }
 
             /* If we have to invert the call, fire the readable event now
-             * after the writable one. */
+             * after the writable one. 写事件之后触发 读事件 */
             if (invert && fe->mask & mask & AE_READABLE) {
                 if (!fired || fe->wfileProc != fe->rfileProc) {
                     fe->rfileProc(eventLoop,fd,fe->clientData,mask);

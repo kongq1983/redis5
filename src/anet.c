@@ -57,7 +57,7 @@ static void anetSetError(char *err, const char *fmt, ...)
     vsnprintf(err, ANET_ERR_LEN, fmt, ap);
     va_end(ap);
 }
-
+// 设置非阻塞机制启动状态
 int anetSetBlock(char *err, int fd, int non_block) {
     int flags;
 
@@ -74,9 +74,9 @@ int anetSetBlock(char *err, int fd, int non_block) {
     else
         flags &= ~O_NONBLOCK;
 
-    if (fcntl(fd, F_SETFL, flags) == -1) {
+    if (fcntl(fd, F_SETFL, flags) == -1) { // int fcntl(int fd, int cmd, long arg)  F_SETFL:设置文件状态标志
         anetSetError(err, "fcntl(F_SETFL,O_NONBLOCK): %s", strerror(errno));
-        return ANET_ERR;
+        return ANET_ERR; // flags: F_SETFL  设置给arg描述符状态标志,可以更改的几个标志是：O_APPEND， O_NONBLOCK，O_SYNC和O_ASYNC
     }
     return ANET_OK;
 }
@@ -527,11 +527,11 @@ int anetUnixServer(char *err, char *path, mode_t perm, int backlog)
         chmod(sa.sun_path, perm);
     return s;
 }
-
+// 等待连接(阻塞或者非阻塞模式，不出错误就一直等待)
 static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len) {
     int fd;
-    while(1) {
-        fd = accept(s,sa,len);
+    while(1) { // 死循环
+        fd = accept(s,sa,len); // TCP Socket等待连接，返回IP和端口值
         if (fd == -1) {
             if (errno == EINTR)
                 continue;
@@ -549,10 +549,10 @@ int anetTcpAccept(char *err, int s, char *ip, size_t ip_len, int *port) {
     int fd;
     struct sockaddr_storage sa;
     socklen_t salen = sizeof(sa);
-    if ((fd = anetGenericAccept(err,s,(struct sockaddr*)&sa,&salen)) == -1)
+    if ((fd = anetGenericAccept(err,s,(struct sockaddr*)&sa,&salen)) == -1) // 等待链接
         return ANET_ERR;
 
-    if (sa.ss_family == AF_INET) {
+    if (sa.ss_family == AF_INET) { //ipv4
         struct sockaddr_in *s = (struct sockaddr_in *)&sa;
         if (ip) inet_ntop(AF_INET,(void*)&(s->sin_addr),ip,ip_len);
         if (port) *port = ntohs(s->sin_port);
