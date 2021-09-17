@@ -554,8 +554,8 @@ int anetTcpAccept(char *err, int s, char *ip, size_t ip_len, int *port) {
 
     if (sa.ss_family == AF_INET) { //ipv4
         struct sockaddr_in *s = (struct sockaddr_in *)&sa;
-        if (ip) inet_ntop(AF_INET,(void*)&(s->sin_addr),ip,ip_len);
-        if (port) *port = ntohs(s->sin_port);
+        if (ip) inet_ntop(AF_INET,(void*)&(s->sin_addr),ip,ip_len); // inet_ntop函数是将网络字节序二进制值转换成点分十进制串
+        if (port) *port = ntohs(s->sin_port); // 将一个无符号短整形数从网络字节顺序转换为主机字节顺序
     } else {
         struct sockaddr_in6 *s = (struct sockaddr_in6 *)&sa;
         if (ip) inet_ntop(AF_INET6,(void*)&(s->sin6_addr),ip,ip_len);
