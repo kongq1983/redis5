@@ -40,13 +40,13 @@
 
 #define DICT_OK 0
 #define DICT_ERR 1
-
+// https://www.cnblogs.com/yinbiao/p/10766357.html
 /* Unused arguments generate annoying warnings... */
 #define DICT_NOTUSED(V) ((void) V)
-
+/**  哈希表节点 */
 typedef struct dictEntry {
-    void *key;
-    union {
+    void *key; /** key */
+    union { /** 值  值v的类型可以是以下三种类型 */ // union变量所占用的内存长度等于最长的成员的内存长度
         void *val;
         uint64_t u64;
         int64_t s64;
@@ -54,31 +54,31 @@ typedef struct dictEntry {
     } v;
     struct dictEntry *next;
 } dictEntry;
-
+// 用于操作字典类型函数
 typedef struct dictType {
-    uint64_t (*hashFunction)(const void *key);
-    void *(*keyDup)(void *privdata, const void *key);
-    void *(*valDup)(void *privdata, const void *obj);
-    int (*keyCompare)(void *privdata, const void *key1, const void *key2);
-    void (*keyDestructor)(void *privdata, void *key);
-    void (*valDestructor)(void *privdata, void *obj);
+    uint64_t (*hashFunction)(const void *key); // // 计算哈希值的函数
+    void *(*keyDup)(void *privdata, const void *key); // // 复制键的函数
+    void *(*valDup)(void *privdata, const void *obj); // // 复制值的函数
+    int (*keyCompare)(void *privdata, const void *key1, const void *key2); // 对比键的函数
+    void (*keyDestructor)(void *privdata, void *key); // 销毁键的函数
+    void (*valDestructor)(void *privdata, void *obj); // 销毁值的函数
 } dictType;
 
 /* This is our hash table structure. Every dictionary has two of this as we
  * implement incremental rehashing, for the old to the new table. */
 typedef struct dictht {
-    dictEntry **table;
-    unsigned long size;
-    unsigned long sizemask;
-    unsigned long used;
+    dictEntry **table; /** 哈希表数组, 每个元素都是一条链表 */
+    unsigned long size; /**  哈希表大小 */
+    unsigned long sizemask; /** 哈希表大小掩码，用于计算索引值 总是等于 size - 1 */
+    unsigned long used; /** 该哈希表已有节点的数量 */
 } dictht;
-
+/** 字典 */
 typedef struct dict {
-    dictType *type;
-    void *privdata;
-    dictht ht[2];
-    long rehashidx; /* rehashing not in progress if rehashidx == -1 */
-    unsigned long iterators; /* number of iterators currently running */
+    dictType *type; // // 类型特定函数
+    void *privdata; // privdata保存了需要传递给那些类型特定函数的可选参数
+    dictht ht[2]; // 两张哈希表 便于渐进式rehash
+    long rehashidx; /* rehashing not in progress if rehashidx == -1 */ // rehash 索引，并没有rehash时，值为 -1
+    unsigned long iterators; /* number of iterators currently running */ // 目前正在运行的安全迭代器的数量
 } dict;
 
 /* If safe is set to 1 this is a safe iterator, that means, you can call

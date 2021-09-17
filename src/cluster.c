@@ -118,8 +118,8 @@ int clusterLoadConfig(char *filename) {
      * together with the node ID of the sender/receiver.
      *
      * To simplify we allocate 1024+CLUSTER_SLOTS*128 bytes per line. */
-    maxline = 1024+CLUSTER_SLOTS*128;
-    line = zmalloc(maxline);
+    maxline = 1024+CLUSTER_SLOTS*128; // 1024+16384*128
+    line = zmalloc(maxline); // /* 调用zmalloc申请size个大小的空间 */
     while(fgets(line,maxline,fp) != NULL) {
         int argc;
         sds *argv;
@@ -718,13 +718,13 @@ clusterNode *createClusterNode(char *nodename, int flags) {
     clusterNode *node = zmalloc(sizeof(*node));
 
     if (nodename)
-        memcpy(node->name, nodename, CLUSTER_NAMELEN);
+        memcpy(node->name, nodename, CLUSTER_NAMELEN); // 指定nodename
     else
-        getRandomHexChars(node->name, CLUSTER_NAMELEN);
+        getRandomHexChars(node->name, CLUSTER_NAMELEN); // 没指定nodename 随机生成
     node->ctime = mstime();
-    node->configEpoch = 0;
+    node->configEpoch = 0; // 新节点的 configEpoch = 0
     node->flags = flags;
-    memset(node->slots,0,sizeof(node->slots));
+    memset(node->slots,0,sizeof(node->slots)); // memset(void *str, int c, size_t n) 复制字符 c（一个无符号字符）到参数 str 所指向的字符串的前 n 个字符
     node->numslots = 0;
     node->numslaves = 0;
     node->slaves = NULL;
@@ -733,7 +733,7 @@ clusterNode *createClusterNode(char *nodename, int flags) {
     node->data_received = 0;
     node->fail_time = 0;
     node->link = NULL;
-    memset(node->ip,0,sizeof(node->ip));
+    memset(node->ip,0,sizeof(node->ip)); // '\000'就是'\0'，即“空字符”可用作表示字符串结束标记
     node->port = 0;
     node->cport = 0;
     node->fail_reports = listCreate();
@@ -839,18 +839,18 @@ int clusterNodeFailureReportsCount(clusterNode *node) {
     clusterNodeCleanupFailureReports(node);
     return listLength(node->fail_reports);
 }
-
+/** 从master删除1个slave节点  */
 int clusterNodeRemoveSlave(clusterNode *master, clusterNode *slave) {
     int j;
 
-    for (j = 0; j < master->numslaves; j++) {
-        if (master->slaves[j] == slave) {
+    for (j = 0; j < master->numslaves; j++) { // 该master的所有slaves
+        if (master->slaves[j] == slave) { //相等
             if ((j+1) < master->numslaves) {
                 int remaining_slaves = (master->numslaves - j) - 1;
                 memmove(master->slaves+j,master->slaves+(j+1),
                         (sizeof(*master->slaves) * remaining_slaves));
             }
-            master->numslaves--;
+            master->numslaves--; // slave节点个数-1
             if (master->numslaves == 0)
                 master->flags &= ~CLUSTER_NODE_MIGRATE_TO;
             return C_OK;
@@ -864,10 +864,10 @@ int clusterNodeAddSlave(clusterNode *master, clusterNode *slave) {
 
     /* If it's already a slave, don't add it again. */
     for (j = 0; j < master->numslaves; j++)
-        if (master->slaves[j] == slave) return C_ERR;
+        if (master->slaves[j] == slave) return C_ERR; // slave已经存在了
     master->slaves = zrealloc(master->slaves,
-        sizeof(clusterNode*)*(master->numslaves+1));
-    master->slaves[master->numslaves] = slave;
+        sizeof(clusterNode*)*(master->numslaves+1)); // 重新分配内存 增加1个slave所需要的空间
+    master->slaves[master->numslaves] = slave; //放到最后位置
     master->numslaves++;
     master->flags |= CLUSTER_NODE_MIGRATE_TO;
     return C_OK;
@@ -2175,25 +2175,25 @@ void clusterWriteHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
         aeDeleteFileEvent(server.el, link->fd, AE_WRITABLE);
 }
 
-/* Read data. Try to read the first field of the header first to check the
+/* Read data. Try to read the first field of the header first to check the  todo 读数据 clusterReadHandler
  * full length of the packet. When a whole packet is in memory this function
  * will call the function to process the packet. And so forth. */
 void clusterReadHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     char buf[sizeof(clusterMsg)];
     ssize_t nread;
     clusterMsg *hdr;
-    clusterLink *link = (clusterLink*) privdata;
+    clusterLink *link = (clusterLink*) privdata; // 网络通信
     unsigned int readlen, rcvbuflen;
     UNUSED(el);
     UNUSED(mask);
-
+    //  - char sig[4];      // 消息签名，对于 cluster 消息，固定为字符序列 RCmb    //- uint32_t totlen;  // 消息总长度
     while(1) { /* Read as long as there is data to read. */
-        rcvbuflen = sdslen(link->rcvbuf);
-        if (rcvbuflen < 8) {
+        rcvbuflen = sdslen(link->rcvbuf); // 读取数据长度
+        if (rcvbuflen < 8) { // clusterMsg 前8个字节  sig[4]：前4个消息签名   totlen:后4个消息总长度
             /* First, obtain the first 8 bytes to get the full message
              * length. */
             readlen = 8 - rcvbuflen;
-        } else {
+        } else { // 已经知道了本条消息的长度 // 本块代码主要计算剩余还需读入的字节数(readlen)才是完整的消息
             /* Finally read the full message. */
             hdr = (clusterMsg*) link->rcvbuf;
             if (rcvbuflen == 8) {
@@ -2212,10 +2212,10 @@ void clusterReadHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
             readlen = ntohl(hdr->totlen) - rcvbuflen;
             if (readlen > sizeof(buf)) readlen = sizeof(buf);
         }
-
-        nread = read(fd,buf,readlen);
+        // 读入本条消息记录的剩余 readlen 个字节的数据
+        nread = read(fd,buf,readlen); // ssize_t read(int fd, void * buf, size_t count)
         if (nread == -1 && errno == EAGAIN) return; /* No more data ready. */
-
+        // 因为这里的 fd 是非阻塞的，所以需要判断 EAGAIN
         if (nread <= 0) {
             /* I/O error... */
             serverLog(LL_DEBUG,"I/O error reading from node link: %s",
@@ -2228,10 +2228,10 @@ void clusterReadHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
             hdr = (clusterMsg*) link->rcvbuf;
             rcvbuflen += nread;
         }
-
+        // // 表明 link 上的 rcvbuf 已经是一个完整的 cluster 消息
         /* Total length obtained? Process this packet. */
         if (rcvbuflen >= 8 && rcvbuflen == ntohl(hdr->totlen)) {
-            if (clusterProcessPacket(link)) {
+            if (clusterProcessPacket(link)) { // 下面开始处理此消息
                 sdsfree(link->rcvbuf);
                 link->rcvbuf = sdsempty();
             } else {
