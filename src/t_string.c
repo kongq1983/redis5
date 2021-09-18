@@ -340,9 +340,9 @@ void incrDecrCommand(client *c, long long incr) {
     long long value, oldvalue;
     robj *o, *new;
 
-    o = lookupKeyWrite(c->db,c->argv[1]);
-    if (o != NULL && checkType(c,o,OBJ_STRING)) return;
-    if (getLongLongFromObjectOrReply(c,o,&value,NULL) != C_OK) return;
+    o = lookupKeyWrite(c->db,c->argv[1]);  //查找有没有对应的键值
+    if (o != NULL && checkType(c,o,OBJ_STRING)) return; // 判断类型
+    if (getLongLongFromObjectOrReply(c,o,&value,NULL) != C_OK) return; //判断不能不能越界，超出long long范围
 
     oldvalue = value;
     if ((incr < 0 && oldvalue < 0 && incr < (LLONG_MIN-oldvalue)) ||
@@ -350,8 +350,8 @@ void incrDecrCommand(client *c, long long incr) {
         addReplyError(c,"increment or decrement would overflow");
         return;
     }
-    value += incr;
-
+    value += incr; // 增加incr
+    // 判断是否大于对象共享整数，value是否在long只最小到最大之间
     if (o && o->refcount == 1 && o->encoding == OBJ_ENCODING_INT &&
         (value < 0 || value >= OBJ_SHARED_INTEGERS) &&
         value >= LONG_MIN && value <= LONG_MAX)
@@ -359,15 +359,15 @@ void incrDecrCommand(client *c, long long incr) {
         new = o;
         o->ptr = (void*)((long)value);
     } else {
-        new = createStringObjectFromLongLongForValue(value);
+        new = createStringObjectFromLongLongForValue(value); //根据数值创建一个long long的robj结构指针
         if (o) {
-            dbOverwrite(c->db,c->argv[1],new);
+            dbOverwrite(c->db,c->argv[1],new); //重写字典
         } else {
-            dbAdd(c->db,c->argv[1],new);
+            dbAdd(c->db,c->argv[1],new); //添加字典
         }
     }
-    signalModifiedKey(c->db,c->argv[1]);
-    notifyKeyspaceEvent(NOTIFY_STRING,"incrby",c->argv[1],c->db->id);
+    signalModifiedKey(c->db,c->argv[1]); //通知修改了key
+    notifyKeyspaceEvent(NOTIFY_STRING,"incrby",c->argv[1],c->db->id); //发送事件通知
     server.dirty++;
     addReply(c,shared.colon);
     addReply(c,new);
