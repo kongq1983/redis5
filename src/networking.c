@@ -91,12 +91,12 @@ client *createClient(int fd) {
      * in the context of a client. When commands are executed in other
      * contexts (for instance a Lua script) we need a non connected client. */
     if (fd != -1) {
-        anetNonBlock(NULL,fd);
-        anetEnableTcpNoDelay(NULL,fd);
+        anetNonBlock(NULL,fd); // 非阻塞
+        anetEnableTcpNoDelay(NULL,fd); //  // 禁用 Nagle 算法
         if (server.tcpkeepalive)
             anetKeepAlive(NULL,fd,server.tcpkeepalive);
-        if (aeCreateFileEvent(server.el,fd,AE_READABLE,
-            readQueryFromClient, c) == AE_ERR)
+        if (aeCreateFileEvent(server.el,fd,AE_READABLE, // 绑定读事件到事件 loop （开始接收命令请求）
+            readQueryFromClient, c) == AE_ERR) // 注册回调函数readQueryFromClient
         {
             close(fd);
             zfree(c);
@@ -298,15 +298,15 @@ void _addReplyStringToList(client *c, const char *s, size_t len) {
 void addReply(client *c, robj *obj) {
     if (prepareClientToWrite(c) != C_OK) return;
 
-    if (sdsEncodedObject(obj)) {
+    if (sdsEncodedObject(obj)) { //字符串类型
         if (_addReplyToBuffer(c,obj->ptr,sdslen(obj->ptr)) != C_OK)
-            _addReplyStringToList(c,obj->ptr,sdslen(obj->ptr));
-    } else if (obj->encoding == OBJ_ENCODING_INT) {
+            _addReplyStringToList(c,obj->ptr,sdslen(obj->ptr)); //添加到c->reply链表中
+    } else if (obj->encoding == OBJ_ENCODING_INT) { //整数类型
         /* For integer encoded strings we just convert it into a string
          * using our optimized function, and attach the resulting string
          * to the output buffer. */
-        char buf[32];
-        size_t len = ll2string(buf,sizeof(buf),(long)obj->ptr);
+        char buf[32]; //追加到c->buf中
+        size_t len = ll2string(buf,sizeof(buf),(long)obj->ptr); //整型转string
         if (_addReplyToBuffer(c,buf,len) != C_OK)
             _addReplyStringToList(c,buf,len);
     } else {
@@ -663,7 +663,7 @@ int clientHasPendingReplies(client *c) {
 #define MAX_ACCEPTS_PER_CALL 1000
 static void acceptCommonHandler(int fd, int flags, char *ip) {
     client *c;
-    if ((c = createClient(fd)) == NULL) {
+    if ((c = createClient(fd)) == NULL) { // 创建一个redisClient(表示一个客户端连接)
         serverLog(LL_WARNING,
             "Error registering fd event for the new client: %s (fd=%d)",
             strerror(errno),fd);
@@ -674,7 +674,7 @@ static void acceptCommonHandler(int fd, int flags, char *ip) {
      * connection. Note that we create the client instead to check before
      * for this condition, since now the socket is already set in non-blocking
      * mode and we can send an error for free using the Kernel I/O */
-    if (listLength(server.clients) > server.maxclients) {
+    if (listLength(server.clients) > server.maxclients) { // > 最大连接数，则关闭
         char *err = "-ERR max number of clients reached\r\n";
 
         /* That's a best effort error message, don't check write errors */
@@ -682,7 +682,7 @@ static void acceptCommonHandler(int fd, int flags, char *ip) {
             /* Nothing to do, Just to avoid the warning... */
         }
         server.stat_rejected_conn++;
-        freeClient(c);
+        freeClient(c); // 释放client
         return;
     }
 
@@ -737,7 +737,7 @@ void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     UNUSED(el);
     UNUSED(mask);
     UNUSED(privdata);
-
+    // 一次调用最多可以处理MAX_ACCEPTS_PER_CALL（1000）个连接
     while(max--) { // 循环1000次
         cfd = anetTcpAccept(server.neterr, fd, cip, sizeof(cip), &cport); // anet.c:548
         if (cfd == ANET_ERR) {
@@ -747,7 +747,7 @@ void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
             return;
         }
         serverLog(LL_VERBOSE,"Accepted %s:%d", cip, cport);
-        acceptCommonHandler(cfd,0,cip);
+        acceptCommonHandler(cfd,0,cip); //创建1个客户端连接RedisClient
     }
 }
 
@@ -1095,7 +1095,7 @@ int handleClientsWithPendingWrites(void) {
         if (c->flags & CLIENT_PROTECTED) continue;
 
         /* Try to write buffers to the client socket. */
-        if (writeToClient(c->fd,c,0) == C_ERR) continue;
+        if (writeToClient(c->fd,c,0) == C_ERR) continue; // 输出到client
 
         /* If after the synchronous writes above we still have data to
          * output to the client, we need to install the writable handler. */
@@ -1510,7 +1510,7 @@ void processInputBufferAndReplicate(client *c) {
         }
     }
 }
-
+// redis处理客户端发送的命令
 void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     client *c = (client*) privdata;
     int nread, readlen;
@@ -1580,7 +1580,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
      * was actually applied to the master state: this quantity, and its
      * corresponding part of the replication stream, will be propagated to
      * the sub-slaves and to the replication backlog. */
-    processInputBufferAndReplicate(c);
+    processInputBufferAndReplicate(c); //进行命令解析
 }
 
 void getClientsMaxBuffers(unsigned long *longest_output_list,

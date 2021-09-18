@@ -2156,7 +2156,7 @@ void initServer(void) {
      * domain sockets. */
     for (j = 0; j < server.ipfd_count; j++) {
         if (aeCreateFileEvent(server.el, server.ipfd[j], AE_READABLE,
-            acceptTcpHandler,NULL) == AE_ERR) // 注册回调函数  ae.c:136
+            acceptTcpHandler,NULL) == AE_ERR) // todo 注册回调函数  ae.c:136
             { // acceptTcpHandler: networking.c:734  server.h:1454
                 serverPanic(
                     "Unrecoverable error creating server.ipfd file event.");
@@ -4263,7 +4263,7 @@ int main(int argc, char **argv) {
     getRandomHexChars(hashseed,sizeof(hashseed));
     dictSetHashFunctionSeed((uint8_t*)hashseed);
     server.sentinel_mode = checkForSentinelMode(argc,argv);
-    initServerConfig();
+    initServerConfig(); // // 初始化服务器配置，主要是填充 redisServer 结构体中的各种参数
     moduleInitModulesSystem();
 
     /* Store the executable path and arguments in a safe place in order
