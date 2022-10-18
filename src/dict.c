@@ -148,28 +148,28 @@ int dictExpand(dict *d, unsigned long size)
 {
     /* the size is invalid if it is smaller than the number of
      * elements already inside the hash table */
-    if (dictIsRehashing(d) || d->ht[0].used > size)
+    if (dictIsRehashing(d) || d->ht[0].used > size)  //  todo 正在扩容中 或者 当前容量大于要扩展的容量 则返回DICT_ERR
         return DICT_ERR;
 
     dictht n; /* the new hash table */
-    unsigned long realsize = _dictNextPower(size);
+    unsigned long realsize = _dictNextPower(size);   // todo 获取扩展后，新的容量
 
     /* Rehashing to the same table size is not useful. */
-    if (realsize == d->ht[0].size) return DICT_ERR;
+    if (realsize == d->ht[0].size) return DICT_ERR;  // todo 和目前容量相等，则返回DICT_ERR，这一般都是到达最大容量了，才会发生
 
     /* Allocate the new hash table and initialize all pointers to NULL */
-    n.size = realsize;
-    n.sizemask = realsize-1;
-    n.table = zcalloc(realsize*sizeof(dictEntry*));
-    n.used = 0;
+    n.size = realsize;         // todo 新的容量大小(2的几次方)
+    n.sizemask = realsize-1;   // todo 哈希表大小掩码 size-1
+    n.table = zcalloc(realsize*sizeof(dictEntry*));  // todo 分配内存空间
+    n.used = 0;  // todo 使用数量为0
 
     /* Is this the first initialization? If so it's not really a rehashing
      * we just set the first hash table so that it can accept keys. */
-    if (d->ht[0].table == NULL) {
+    if (d->ht[0].table == NULL) {  // todo 是否第1次初始化，如果是，则不需要rehashing
         d->ht[0] = n;
         return DICT_OK;
     }
-
+    // todo 准备第二个哈希表以进行增量重新散列
     /* Prepare a second hash table for incremental rehashing */
     d->ht[1] = n;
     d->rehashidx = 0;
@@ -481,12 +481,12 @@ dictEntry *dictFind(dict *d, const void *key)
     if (d->ht[0].used + d->ht[1].used == 0) return NULL; /* dict is empty */
     if (dictIsRehashing(d)) _dictRehashStep(d);
     h = dictHashKey(d, key);
-    for (table = 0; table <= 1; table++) {
-        idx = h & d->ht[table].sizemask;
-        he = d->ht[table].table[idx];
+    for (table = 0; table <= 1; table++) { //todo 总共就2个table(dictht ht[2]) 去2个地址找，优先从[0]的位置找
+        idx = h & d->ht[table].sizemask; // todo 得到key的索引位置
+        he = d->ht[table].table[idx]; // todo 得到 dictEntry
         while(he) {
-            if (key==he->key || dictCompareKeys(d, key, he->key))
-                return he;
+            if (key==he->key || dictCompareKeys(d, key, he->key)) // todo 第1个内存地址相等  第2个应该和值相等，内存地址不同，类似java的equals
+                return he; // todo 找到，则返回
             he = he->next;
         }
         if (!dictIsRehashing(d)) return NULL;
@@ -943,13 +943,13 @@ static int _dictExpandIfNeeded(dict *d)
 /* Our hash table capability is a power of two */
 static unsigned long _dictNextPower(unsigned long size)
 {
-    unsigned long i = DICT_HT_INITIAL_SIZE;
+    unsigned long i = DICT_HT_INITIAL_SIZE; // 默认4
 
-    if (size >= LONG_MAX) return LONG_MAX + 1LU;
+    if (size >= LONG_MAX) return LONG_MAX + 1LU;  // todo   到达最大值 则返回   1LU=表示无符号长整型1
     while(1) {
         if (i >= size)
-            return i;
-        i *= 2;
+            return i; // 其实容量就是2的几次方  如果大于size ，则返回
+        i *= 2;  // *2  2的几次方
     }
 }
 

@@ -1077,10 +1077,10 @@ void setExpire(client *c, redisDb *db, robj *key, long long when) {
     dictEntry *kde, *de;
 
     /* Reuse the sds from the main dict in the expire dict */
-    kde = dictFind(db->dict,key->ptr);
+    kde = dictFind(db->dict,key->ptr); // todo 查找dictEntry
     serverAssertWithInfo(NULL,key,kde != NULL);
     de = dictAddOrFind(db->expires,dictGetKey(kde));
-    dictSetSignedIntegerVal(de,when);
+    dictSetSignedIntegerVal(de,when); //todo  设置dictEntry.v.s64
 
     int writable_slave = server.masterhost && server.repl_slave_ro == 0;
     if (c && writable_slave && !(c->flags & CLIENT_MASTER))
@@ -1099,7 +1099,7 @@ long long getExpire(redisDb *db, robj *key) {
     /* The entry was found in the expire dict, this means it should also
      * be present in the main dict (safety check). */
     serverAssertWithInfo(NULL,key,dictFind(db->dict,key->ptr) != NULL);
-    return dictGetSignedIntegerVal(de);
+    return dictGetSignedIntegerVal(de); // todo 获取 dictEntry.v.s64
 }
 
 /* Propagate expires into slaves and the AOF file.
@@ -1181,10 +1181,10 @@ int keyIsExpired(redisDb *db, robj *key) {
  * key will be evicted from the database. Also this may trigger the
  * propagation of a DEL/UNLINK command in AOF / replication stream.
  *
- * The return value of the function is 0 if the key is still valid,
- * otherwise the function returns 1 if the key is expired. */
+ * The return value of the function is 0 if the key is still valid,   todo 如果键仍然有效，则函数的返回值为0
+ * otherwise the function returns 1 if the key is expired. */      // todo 否则，如果key已过期，函数将返回1
 int expireIfNeeded(redisDb *db, robj *key) {
-    if (!keyIsExpired(db,key)) return 0;
+    if (!keyIsExpired(db,key)) return 0;  // todo 进入这里说明keyIsExpired=false ，也就是未过期    @see db.c:1130
 
     /* If we are running in the context of a slave, instead of
      * evicting the expired key from the database, we return ASAP:
@@ -1194,9 +1194,9 @@ int expireIfNeeded(redisDb *db, robj *key) {
      * Still we try to return the right information to the caller,
      * that is, 0 if we think the key should be still valid, 1 if
      * we think the key is expired at this time. */
-    if (server.masterhost != NULL) return 1;
+    if (server.masterhost != NULL) return 1;  // todo !=null ,说明是当前server是slave
 
-    /* Delete the key */
+    /* Delete the key */  // todo 到这里说明是master
     server.stat_expiredkeys++;
     propagateExpire(db,key,server.lazyfree_lazy_expire);
     notifyKeyspaceEvent(NOTIFY_EXPIRED,

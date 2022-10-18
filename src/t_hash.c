@@ -293,7 +293,7 @@ int hashTypeDelete(robj *o, sds field) {
                 deleted = 1;
             }
         }
-    } else if (o->encoding == OBJ_ENCODING_HT) {
+    } else if (o->encoding == OBJ_ENCODING_HT) { // Encoded as hash table
         if (dictDelete((dict*)o->ptr, field) == C_OK) {
             deleted = 1;
 

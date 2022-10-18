@@ -211,7 +211,7 @@ void *bioProcessBackgroundJobs(void *arg) {
         bio_pending[type]--;
 
         /* Unblock threads blocked on bioWaitStepOfType() if any. */
-        pthread_cond_broadcast(&bio_step_cond[type]);
+        pthread_cond_broadcast(&bio_step_cond[type]); // 一旦某个锁被释放，所有的阻塞线程都会被唤醒，但唯有阻塞在这个锁的线程才能真正被唤醒 mutex的使用，保证了最多一个线程被真正唤醒，即便是broadcast
     }
 }
 

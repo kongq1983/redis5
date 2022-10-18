@@ -350,9 +350,9 @@ void loadServerConfigFromString(char *config) {
         } else if ((!strcasecmp(argv[0],"slaveof") ||
                     !strcasecmp(argv[0],"replicaof")) && argc == 3) {
             slaveof_linenum = linenum;
-            server.masterhost = sdsnew(argv[1]);
-            server.masterport = atoi(argv[2]);
-            server.repl_state = REPL_STATE_CONNECT;
+            server.masterhost = sdsnew(argv[1]); // todo 设置主节点host, redis通过此字段是否==NULL判断当前是否为从节点
+            server.masterport = atoi(argv[2]); // 设置主节点port
+            server.repl_state = REPL_STATE_CONNECT; // 当前从节点的连接状态
         } else if ((!strcasecmp(argv[0],"repl-ping-slave-period") ||
                     !strcasecmp(argv[0],"repl-ping-replica-period")) &&
                     argc == 2)

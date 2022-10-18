@@ -78,7 +78,7 @@ static dict *dictCreate(dictType *type, void *privDataPtr) {
 
 /* Initialize the hash table */
 static int _dictInit(dict *ht, dictType *type, void *privDataPtr) {
-    _dictReset(ht);
+    _dictReset(ht); // 重置ht
     ht->type = type;
     ht->privdata = privDataPtr;
     return DICT_OK;
@@ -87,11 +87,11 @@ static int _dictInit(dict *ht, dictType *type, void *privDataPtr) {
 /* Expand or create the hashtable */
 static int dictExpand(dict *ht, unsigned long size) {
     dict n; /* the new hashtable */
-    unsigned long realsize = _dictNextPower(size), i;
+    unsigned long realsize = _dictNextPower(size), i; // 2的几次方
 
     /* the size is invalid if it is smaller than the number of
      * elements already inside the hashtable */
-    if (ht->used > size)
+    if (ht->used > size)  // 错误的size 扩容size>used 使用的大小>扩容大小
         return DICT_ERR;
 
     _dictInit(&n, ht->type, ht->privdata);
@@ -297,7 +297,7 @@ static int _dictExpandIfNeeded(dict *ht) {
      * if the table is "full" dobule its size. */
     if (ht->size == 0)
         return dictExpand(ht, DICT_HT_INITIAL_SIZE);
-    if (ht->used == ht->size)
+    if (ht->used == ht->size) // table满了  则现在的容量*2
         return dictExpand(ht, ht->size*2);
     return DICT_OK;
 }
