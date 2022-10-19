@@ -148,7 +148,7 @@ int dictExpand(dict *d, unsigned long size)
 {
     /* the size is invalid if it is smaller than the number of
      * elements already inside the hash table */
-    if (dictIsRehashing(d) || d->ht[0].used > size)  //  todo 正在扩容中 或者 当前容量大于要扩展的容量 则返回DICT_ERR
+    if (dictIsRehashing(d) || d->ht[0].used > size)  //  todo 正在Rehashing 或者 当前使用数量大于要扩展的槽位 则返回DICT_ERR
         return DICT_ERR;
 
     dictht n; /* the new hash table */
@@ -172,61 +172,61 @@ int dictExpand(dict *d, unsigned long size)
     // todo 准备第二个哈希表以进行增量重新散列
     /* Prepare a second hash table for incremental rehashing */
     d->ht[1] = n;
-    d->rehashidx = 0;
-    return DICT_OK;
+    d->rehashidx = 0; // todo 字典dict的rehashidx被设置成0后，就表示開始rehash动作，在心跳函数运行的过程，会检查到这个标志，假设须要rehash,即可进行渐进式rehash动作
+    return DICT_OK;  // todo 步骤　serverCron->incrementallyRehash->dictRehashMilliseconds->dictRehas
 }
-
-/* Performs N steps of incremental rehashing. Returns 1 if there are still
- * keys to move from the old to the new hash table, otherwise 0 is returned.
+// todo 在渐进式 rehash 执行期间，新增的键值对会被直接保存到 ht[1], ht[0] 不再进行任何添加操作，这样就保证了 ht[0] 包含的键值对数量会只减不增，并随着 rehash 操作的执行而最终变成空表
+/* Performs N steps of incremental rehashing. Returns 1 if there are still      todo 执行N步增量刷新。如果仍然存在，则返回1
+ * keys to move from the old to the new hash table, otherwise 0 is returned.    todo 键从旧哈希表移动到新哈希表，否则返回0
  *
- * Note that a rehashing step consists in moving a bucket (that may have more
- * than one key as we use chaining) from the old to the new hash table, however
- * since part of the hash table may be composed of empty spaces, it is not
- * guaranteed that this function will rehash even a single bucket, since it
- * will visit at max N*10 empty buckets in total, otherwise the amount of
- * work it does would be unbound and the function may block for a long time. */
-int dictRehash(dict *d, int n) {
+ * Note that a rehashing step consists in moving a bucket (that may have more   todo 请注意，重新整理步骤包括移动一个存储桶 (可能有更多
+ * than one key as we use chaining) from the old to the new hash table, however todo 但是，当我们使用链接时，不止一个键)  从旧哈希表到新哈希表
+ * since part of the hash table may be composed of empty spaces, it is not      todo 由于哈希表的一部分可能由 empty spaces 组成，因此它不是
+ * guaranteed that this function will rehash even a single bucket, since it     todo 保证此函数将重新散列甚至单个存储桶，因为它
+ * will visit at max N*10 empty buckets in total, otherwise the amount of       todo 将访问总计最多N*10个空桶，否则为
+ * work it does would be unbound and the function may block for a long time. */ // todo 它所做的工作将是未绑定的，函数可能会阻塞很长时间
+int dictRehash(dict *d, int n) { // todo 比如 n=100
     int empty_visits = n*10; /* Max number of empty buckets to visit. */
-    if (!dictIsRehashing(d)) return 0;
-
-    while(n-- && d->ht[0].used != 0) {
+    if (!dictIsRehashing(d)) return 0; // todo 通常情况下，所有的数据都是存在放dict的ht[0]中，ht[1]只在rehash的时候使用
+    // todo dict进行rehash的时候，将ht[0]中的所有数据rehash到ht[1]中。然后将ht[1]赋值给ht[0]，并清空ht[1]。dict的rehash并不是一次性完成的，而是分成多步
+    while(n-- && d->ht[0].used != 0) {  // todo d->ht[0].used != 0 说明还有数据　 n就是本次要处理非空槽位数
         dictEntry *de, *nextde;
 
         /* Note that rehashidx can't overflow as we are sure there are more
-         * elements because ht[0].used != 0 */
+         * elements because ht[0].used != 0 */ // todo 请注意，rehashidx不能溢出，因为我们确信还有更多元素，因为ht[0].used != 0
         assert(d->ht[0].size > (unsigned long)d->rehashidx);
-        while(d->ht[0].table[d->rehashidx] == NULL) {
-            d->rehashidx++;
-            if (--empty_visits == 0) return 1;
+        while(d->ht[0].table[d->rehashidx] == NULL) { // todo 该位置没有数据
+            d->rehashidx++; // todo rehashidx++ 定位到下一个位置
+            if (--empty_visits == 0) return 1;  // todo 到达本次任务处理最大空槽位次数，则返回
         }
-        de = d->ht[0].table[d->rehashidx];
-        /* Move all the keys in this bucket from the old to the new hash HT */
-        while(de) {
+        de = d->ht[0].table[d->rehashidx]; // todo ht[0]   table = dictEntry **table
+        /* Move all the keys in this bucket from the old to the new hash HT */ // todo 将此bucket中的所有键从旧哈希HT移动到新哈希
+        while(de) { // todo 旧:ht[0]  ->  新:ht[1]   de是某个槽的dictEntry
             uint64_t h;
 
             nextde = de->next;
             /* Get the index in the new hash table */
-            h = dictHashKey(d, de->key) & d->ht[1].sizemask;
+            h = dictHashKey(d, de->key) & d->ht[1].sizemask;  // todo 获取新哈希表ht[1]中的索引
             de->next = d->ht[1].table[h];
             d->ht[1].table[h] = de;
             d->ht[0].used--;
             d->ht[1].used++;
             de = nextde;
-        }
-        d->ht[0].table[d->rehashidx] = NULL;
-        d->rehashidx++;
+        } // todo 结束处理某个槽的所有dictEntry  注意: 进入到dictRehash，如果处理某个槽，则会处理完成该槽，不会处理一半就结束
+        d->ht[0].table[d->rehashidx] = NULL; //todo  设置旧hashTable的rehashidx位置的数据为NULL
+        d->rehashidx++; // todo rehashidx++ 位置+1
     }
 
     /* Check if we already rehashed the whole table... */
-    if (d->ht[0].used == 0) {
-        zfree(d->ht[0].table);
-        d->ht[0] = d->ht[1];
-        _dictReset(&d->ht[1]);
-        d->rehashidx = -1;
+    if (d->ht[0].used == 0) { // todo 旧table已迁移完成
+        zfree(d->ht[0].table); // todo 释放d->ht[0].table的内存
+        d->ht[0] = d->ht[1]; // todo ht[1] 赋给ht[0]
+        _dictReset(&d->ht[1]); // todo 重置ht[1]
+        d->rehashidx = -1;  // todo rehash结束
         return 0;
     }
 
-    /* More to rehash... */
+    /* More to rehash... */  // todo 要继续rehash
     return 1;
 }
 
@@ -238,30 +238,30 @@ long long timeInMilliseconds(void) {
 }
 
 /* Rehash for an amount of time between ms milliseconds and ms+1 milliseconds */
-int dictRehashMilliseconds(dict *d, int ms) {
+int dictRehashMilliseconds(dict *d, int ms) { // todo 毫秒到毫秒+1毫秒之间的重新刷新时间
     long long start = timeInMilliseconds();
     int rehashes = 0;
 
     while(dictRehash(d,100)) {
         rehashes += 100;
-        if (timeInMilliseconds()-start > ms) break;
+        if (timeInMilliseconds()-start > ms) break;  // todo 本次执行超过ms毫秒 就结束
     }
-    return rehashes;
+    return rehashes; // todo 返回rehash数量
 }
 
-/* This function performs just a step of rehashing, and only if there are
- * no safe iterators bound to our hash table. When we have iterators in the
- * middle of a rehashing we can't mess with the two hash tables otherwise
+/* This function performs just a step of rehashing, and only if there are  todo 此函数仅执行一步重新rehashing  并且只有在没有安全的迭代器绑定到哈希表
+ * no safe iterators bound to our hash table. When we have iterators in the  todo 在rehashing的过程中，我们不能处理两个散列表，否则
+ * middle of a rehashing we can't mess with the two hash tables otherwise  todo  某些元素可能会丢失或重复
  * some element can be missed or duplicated.
  *
- * This function is called by common lookup or update operations in the
- * dictionary so that the hash table automatically migrates from H1 to H2
+ * This function is called by common lookup or update operations in the  todo 此函数由字典，以便哈希表自动从H1迁移到H2
+ * dictionary so that the hash table automatically migrates from H1 to H2  todo 当它被使用时
  * while it is actively used. */
-static void _dictRehashStep(dict *d) {
+static void _dictRehashStep(dict *d) { // todo 正在rehash会调用本方法　if (dictIsRehashing(d)) _dictRehashStep(d);
     if (d->iterators == 0) dictRehash(d,1);
 }
 
-/* Add an element to the target hash table */
+/* Add an element to the target hash table */ // todo dictAdd -> dictAddRaw
 int dictAdd(dict *d, void *key, void *val)
 {
     dictEntry *entry = dictAddRaw(d,key,NULL);
@@ -271,46 +271,46 @@ int dictAdd(dict *d, void *key, void *val)
     return DICT_OK;
 }
 
-/* Low level add or find:
- * This function adds the entry but instead of setting a value returns the
- * dictEntry structure to the user, that will make sure to fill the value
+/* Low level add or find: todo Low level添加或查找
+ * This function adds the entry but instead of setting a value returns the  todo 此函数用于添加条目，但不是设置值，而是返回dictEntry结构
+ * dictEntry structure to the user, that will make sure to fill the value   todo 它将确保填充值，是他所期望的
  * field as he wishes.
  *
- * This function is also directly exposed to the user API to be called
- * mainly in order to store non-pointers inside the hash value, example:
+ * This function is also directly exposed to the user API to be called     todo 此函数也直接向要调用的用户API公开
+ * mainly in order to store non-pointers inside the hash value, example:   todo 主要是为了在哈希值中存储非指针，例如
  *
  * entry = dictAddRaw(dict,mykey,NULL);
  * if (entry != NULL) dictSetSignedIntegerVal(entry,1000);
  *
  * Return values:
  *
- * If key already exists NULL is returned, and "*existing" is populated
- * with the existing entry if existing is not NULL.
+ * If key already exists NULL is returned, and "*existing" is populated        todo 如果键已经存在，则返回NULL，并填充“*existing”
+ * with the existing entry if existing is not NULL.                            todo 如果现有项不为NULL，则使用现有项
  *
- * If key was added, the hash entry is returned to be manipulated by the caller.
+ * If key was added, the hash entry is returned to be manipulated by the caller.  todo 如果添加了键，则返回哈希条目供调用方操作
  */
 dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
 {
     long index;
     dictEntry *entry;
     dictht *ht;
-
+    // todo 正在Rehashing
     if (dictIsRehashing(d)) _dictRehashStep(d);
 
     /* Get the index of the new element, or -1 if
      * the element already exists. */
-    if ((index = _dictKeyIndex(d, key, dictHashKey(d,key), existing)) == -1)
+    if ((index = _dictKeyIndex(d, key, dictHashKey(d,key), existing)) == -1) // todo 返回-1(没有空闲槽位)  1. 说明key存在，2. 全部槽位满了，并且扩容失败
         return NULL;
 
-    /* Allocate the memory and store the new entry.
-     * Insert the element in top, with the assumption that in a database
-     * system it is more likely that recently added entries are accessed
+    /* Allocate the memory and store the new entry.   todo 分配内存并存储新条目
+     * Insert the element in top, with the assumption that in a database  todo 在顶部插入元素，假设在数据库系统中
+     * system it is more likely that recently added entries are accessed  todo 更可能访问-更频繁地-最近添加的条目
      * more frequently. */
-    ht = dictIsRehashing(d) ? &d->ht[1] : &d->ht[0];
-    entry = zmalloc(sizeof(*entry));
-    entry->next = ht->table[index];
-    ht->table[index] = entry;
-    ht->used++;
+    ht = dictIsRehashing(d) ? &d->ht[1] : &d->ht[0];  // todo 在渐进式 rehash 执行期间，新增的键值对会被直接保存到 ht[1], ht[0] 不再进行任何添加操作，这样就保证了 ht[0] 包含的键值对数量会只减不增，并随着 rehash 操作的执行而最终变成空表
+    entry = zmalloc(sizeof(*entry)); // todo 创建entry
+    entry->next = ht->table[index]; // todo 该槽位旧值，当作新元素的next ，也就是新加的元素，都在头部，旧元素当作新元素的next
+    ht->table[index] = entry;  // todo 设置index槽位的新元素
+    ht->used++; // todo 使用数量+1
 
     /* Set the hash entry fields. */
     dictSetKey(d, entry, key);
@@ -329,19 +329,19 @@ int dictReplace(dict *d, void *key, void *val)
     /* Try to add the element. If the key
      * does not exists dictAdd will succeed. */
     entry = dictAddRaw(d,key,&existing);
-    if (entry) {
-        dictSetVal(d, entry, val);
+    if (entry) {  // todo dictEntry 添加成功
+        dictSetVal(d, entry, val); // todo 设置值
         return 1;
     }
-
-    /* Set the new value and free the old one. Note that it is important
-     * to do that in this order, as the value may just be exactly the same
-     * as the previous one. In this context, think to reference counting,
-     * you want to increment (set), and then decrement (free), and not the
+    // todo 说明槽位已存在
+    /* Set the new value and free the old one. Note that it is important  todo 设置新值并释放旧值。请注意，按此顺序执行，这很重要
+     * to do that in this order, as the value may just be exactly the same  todo 因为值可能完全和之前那个相同
+     * as the previous one. In this context, think to reference counting,   todo 在这种情况下，考虑引用计数
+     * you want to increment (set), and then decrement (free), and not the // todo 您想要递增（设置），然后递减（自由），而不是反向
      * reverse. */
-    auxentry = *existing;
-    dictSetVal(d, existing, val);
-    dictFreeVal(d, &auxentry);
+    auxentry = *existing;  // todo 把指针existing所指向的内容赋值auxentry ，也就是auxentry的值和*existing的值，是独立的２份数据
+    dictSetVal(d, existing, val);    // todo 设置新值
+    dictFreeVal(d, &auxentry);  // todo 释放旧值
     return 0;
 }
 
@@ -925,15 +925,15 @@ static int _dictExpandIfNeeded(dict *d)
     if (dictIsRehashing(d)) return DICT_OK;
 
     /* If the hash table is empty expand it to the initial size. */
-    if (d->ht[0].size == 0) return dictExpand(d, DICT_HT_INITIAL_SIZE);
+    if (d->ht[0].size == 0) return dictExpand(d, DICT_HT_INITIAL_SIZE); // todo 数组长度为空的时候
 
     /* If we reached the 1:1 ratio, and we are allowed to resize the hash
      * table (global setting) or we should avoid it but the ratio between
      * elements/buckets is over the "safe" threshold, we resize doubling
-     * the number of buckets. */
+     * the number of buckets. */ // todo 如果Hash表承载的元素个数超过其当前大小 && (并且可以进行扩容 || Hash表承载的元素个数已是当前大小的5倍)
     if (d->ht[0].used >= d->ht[0].size &&
         (dict_can_resize ||
-         d->ht[0].used/d->ht[0].size > dict_force_resize_ratio))
+         d->ht[0].used/d->ht[0].size > dict_force_resize_ratio))  // todo  dict_force_resize_ratio=5  这种情况一般是hash冲突比较严重了
     {
         return dictExpand(d, d->ht[0].used*2);
     }
@@ -953,36 +953,36 @@ static unsigned long _dictNextPower(unsigned long size)
     }
 }
 
-/* Returns the index of a free slot that can be populated with
- * a hash entry for the given 'key'.
- * If the key already exists, -1 is returned
+/* Returns the index of a free slot that can be populated with  todo 返回可填充的空闲插槽的索引
+ * a hash entry for the given 'key'.  todo 给定“key”的哈希条目
+ * If the key already exists, -1 is returned   todo 如果key已经存在，则返回-1
  * and the optional output parameter may be filled.
  *
- * Note that if we are in the process of rehashing the hash table, the
- * index is always returned in the context of the second (new) hash table. */
+ * Note that if we are in the process of rehashing the hash table, the  todo 注意，如果我们正在重新散列哈希表
+ * index is always returned in the context of the second (new) hash table. */  // todo index总是在第二个（新）哈希表的上下文中返回   也就是ht[1]
 static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **existing)
 {
     unsigned long idx, table;
     dictEntry *he;
-    if (existing) *existing = NULL;
+    if (existing) *existing = NULL; // todo existing是数组，　*existing只是该数组中的某个位置
 
     /* Expand the hash table if needed */
-    if (_dictExpandIfNeeded(d) == DICT_ERR)
-        return -1;
+    if (_dictExpandIfNeeded(d) == DICT_ERR)  // todo 返回DICT_ERR 一般是扩容失败
+        return -1;  // todo 一般是扩容失败　
     for (table = 0; table <= 1; table++) {
         idx = hash & d->ht[table].sizemask;
         /* Search if this slot does not already contain the given key */
         he = d->ht[table].table[idx];
         while(he) {
             if (key==he->key || dictCompareKeys(d, key, he->key)) {
-                if (existing) *existing = he;
-                return -1;
+                if (existing) *existing = he;  // todo *existing 设置 dictEntry
+                return -1;  //todo  key存在 返回-1
             }
             he = he->next;
         }
         if (!dictIsRehashing(d)) break;
     }
-    return idx;
+    return idx;  // todo 返回空闲槽位
 }
 
 void dictEmpty(dict *d, void(callback)(void*)) {

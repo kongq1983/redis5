@@ -748,13 +748,13 @@ void tryResizeHashTables(int dbid) {
     if (htNeedsResize(server.db[dbid].expires))
         dictResize(server.db[dbid].expires);
 }
-
-/* Our hash table implementation performs rehashing incrementally while
- * we write/read from the hash table. Still if the server is idle, the hash
- * table will use two tables for a long time. So we try to use 1 millisecond
- * of CPU time at every call of this function to perform some rehahsing.
+// todo serverCron->incrementallyRehash->dictRehashMilliseconds->dictRehash
+/* Our hash table implementation performs rehashing incrementally while       todo 我们的哈希表实现在
+ * we write/read from the hash table. Still if the server is idle, the hash   todo 我们从哈希表中写入/读取。如果服务器空闲，
+ * table will use two tables for a long time. So we try to use 1 millisecond  todo 哈希表将长期使用 two tables   所以我们试着用1毫秒
+ * of CPU time at every call of this function to perform some rehahsing.      todo 每次调用此函数以执行某些rehashing时的CPU时间
  *
- * The function returns 1 if some rehashing was performed, otherwise 0
+ * The function returns 1 if some rehashing was performed, otherwise 0  todo  如果执行了某些rehashing，则函数返回1，否则返回0
  * is returned. */
 int incrementallyRehash(int dbid) {
     /* Keys dictionary */
@@ -777,10 +777,10 @@ int incrementallyRehash(int dbid) {
  * for dict.c to resize the hash tables accordingly to the fact we have o not
  * running childs. */
 void updateDictResizePolicy(void) {
-    if (server.rdb_child_pid == -1 && server.aof_child_pid == -1)
-        dictEnableResize();
+    if (server.rdb_child_pid == -1 && server.aof_child_pid == -1) // todo 没有RDB子进程 && 也没有AOF子进程
+        dictEnableResize(); // dict_can_resize = 1
     else
-        dictDisableResize();
+        dictDisableResize(); // dict_can_resize = 0
 }
 
 int hasActiveChildProcess() {
@@ -1006,7 +1006,7 @@ void clientsCron(void) {
 /* This function handles 'background' operations we are required to do
  * incrementally in Redis databases, such as active key expiring, resizing,
  * rehashing. */
-void databasesCron(void) {
+void databasesCron(void) { // todo 定时器　
     /* Expire keys by random sampling. Not required for slaves
      * as master will synthesize DELs for us. */
     if (server.active_expire_enabled) {
@@ -1046,13 +1046,13 @@ void databasesCron(void) {
         if (server.activerehashing) {
             for (j = 0; j < dbs_per_call; j++) {
                 int work_done = incrementallyRehash(rehash_db);
-                if (work_done) {
+                if (work_done) { // todo 做了某些rehashing
                     /* If the function did some work, stop here, we'll do
-                     * more at the next cron loop. */
+                     * more at the next cron loop. */ // todo 如果函数做了一些工作，就到此为止，我们将在下一个cron循环中做更多的工作
                     break;
                 } else {
                     /* If this db didn't need rehash, we'll try the next one. */
-                    rehash_db++;
+                    rehash_db++; // todo 如果这个数据库不需要rehashing，我们将尝试下一个
                     rehash_db %= server.dbnum;
                 }
             }

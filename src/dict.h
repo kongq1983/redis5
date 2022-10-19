@@ -77,8 +77,8 @@ typedef struct dict {
     dictType *type; // // 类型特定函数
     void *privdata; // privdata保存了需要传递给那些类型特定函数的可选参数
     dictht ht[2]; // 两张哈希表 便于渐进式rehash
-    long rehashidx; /* rehashing not in progress if rehashidx == -1 */ // rehash 索引，并没有rehash时，值为 -1
-    unsigned long iterators; /* number of iterators currently running */ // 目前正在运行的安全迭代器的数量
+    long rehashidx; /* rehashing not in progress if rehashidx == -1 */ // todo rehash索引，并没有rehash时，值为 -1
+    unsigned long iterators; /* number of iterators currently running */ // todo 目前正在运行的安全迭代器的数量
 } dict;
 
 /* If safe is set to 1 this is a safe iterator, that means, you can call

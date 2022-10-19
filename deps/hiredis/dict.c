@@ -91,7 +91,7 @@ static int dictExpand(dict *ht, unsigned long size) {
 
     /* the size is invalid if it is smaller than the number of
      * elements already inside the hashtable */
-    if (ht->used > size)  // 错误的size 扩容size>used 使用的大小>扩容大小
+    if (ht->used > size)  // todo 错误的size  扩容size>used 使用的大小>扩容大小
         return DICT_ERR;
 
     _dictInit(&n, ht->type, ht->privdata);

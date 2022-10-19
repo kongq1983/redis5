@@ -202,7 +202,7 @@ void loadServerConfigFromString(char *config) {
         sdstolower(argv[0]);
 
         /* Execute config directives */
-        if (!strcasecmp(argv[0],"timeout") && argc == 2) {
+        if (!strcasecmp(argv[0],"timeout") && argc == 2) { // todo strcasecmp  忽略大小写比较  等于0是相等
             server.maxidletime = atoi(argv[1]);
             if (server.maxidletime < 0) {
                 err = "Invalid timeout value"; goto loaderr;
@@ -347,9 +347,9 @@ void loadServerConfigFromString(char *config) {
                 err = "lfu-decay-time must be 0 or greater";
                 goto loaderr;
             }
-        } else if ((!strcasecmp(argv[0],"slaveof") ||
+        } else if ((!strcasecmp(argv[0],"slaveof") ||  // todo 为什么是! ，因为strcasecmp如果相等是返回0,但对条件来说0是false，所以前面加个!
                     !strcasecmp(argv[0],"replicaof")) && argc == 3) {
-            slaveof_linenum = linenum;
+            slaveof_linenum = linenum;  // todo 进入这里说明，配置了slaveof 或者 replicaof
             server.masterhost = sdsnew(argv[1]); // todo 设置主节点host, redis通过此字段是否==NULL判断当前是否为从节点
             server.masterport = atoi(argv[2]); // 设置主节点port
             server.repl_state = REPL_STATE_CONNECT; // 当前从节点的连接状态
@@ -839,7 +839,7 @@ void loadServerConfig(char *filename, char *options) {
     char buf[CONFIG_MAX_LINE+1];
 
     /* Load the file content */
-    if (filename) {
+    if (filename) { //  todo filename !=NULL
         FILE *fp;
 
         if (filename[0] == '-' && filename[1] == '\0') {

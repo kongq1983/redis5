@@ -1,0 +1,8 @@
+
+
+// iterators何时不为0
+// 为什么要iterators=0,执行
+// 为什么dictRehash(d,1)  n=1
+static void _dictRehashStep(dict *d) { // todo 正在rehash会调用本方法　if (dictIsRehashing(d)) _dictRehashStep(d);
+    if (d->iterators == 0) dictRehash(d,1); //
+}
